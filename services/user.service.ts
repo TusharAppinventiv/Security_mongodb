@@ -49,7 +49,7 @@ export const loginUser = async (userData: UserInput): Promise<string> => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id }, secretKey,{expiresIn:'10'});
+    const token = jwt.sign({ userId: user._id }, secretKey,{expiresIn:'10h'});
 
     return token;
   } catch (error) {
