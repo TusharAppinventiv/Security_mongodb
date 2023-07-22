@@ -6,7 +6,7 @@ const connectToDatabase = async () => {
     const connection = await mongoose.connect('mongodb://localhost:27017/security', {
       // useNewUrlParser: true,
       // useUnifiedTopology: true,
-      // useCreateIndex: true,
+      // useCreateIndex: true
     });
     console.log('Connected to MongoDB');
   } catch (error) {
