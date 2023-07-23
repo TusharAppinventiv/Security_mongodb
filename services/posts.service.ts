@@ -16,3 +16,4 @@ const createPost = async (userId: string, caption: string, imageUrl: string) => 
 export default {
   createPost,
 };
+
