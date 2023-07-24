@@ -1,79 +1,67 @@
-// import { Request, Response } from 'express';
-// import { registerUser, loginUser } from '../services/user.service';
-// import { UserInput } from '../types/user.types';
-// import { redisMiddleware } from '../middlewares/redis.middleware';
-
-// export const registerUserController = async (req: Request, res: Response) => {
-//   try {
-//     const user = await registerUser(req.body as UserInput);
-
-//     res.status(201).json(user);
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Internal server error' });
-//   }
-// };
-
-// export const loginUserController = async (req, res) => {
-//   try {
-//     await redisMiddleware(req, res, async () => {
-//       try {
-//         const token = await loginUser(req.body as UserInput);
-    
-//         res.status(200).json({ token });
-//       } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Internal server error' });
-//       } });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Internal server error' });
-//   }
-// };
-
-
-// export const loginUserController = async (req: Request, res: Response) => {
-//   try {
-//     const token = await loginUser(req.body as UserInput);
-
-//     res.status(200).json({ token });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Internal server error' });
-//   }
-// };
 import { Request, Response } from 'express';
-import { registerUser, loginUser } from '../services/user.service';
-import { UserInput } from '../types/user.types';
-import { redisClient, redisMiddleware } from '../middlewares/redis.middleware';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { sessionModel } from '../models/session.model';
+import UserModel from '../models/users.model';
+import redisclient from '../redis/redis.client';
 
-export const registerUserController = async (req: Request, res: Response) => {
+export const signup = async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = await registerUser(req.body as UserInput);
+    const { email, password, name }: { email: string; password: string; name: string } = req.body;
+    if (!email || !password || !name) {
+      res.status(400).send('Email, password, and name are required');
+      return;
+    }
 
-    // Store the user object in Redis
-    redisClient.set(user.id, JSON.stringify(user));
+    const salt: string = await bcrypt.genSalt(10);
+    const hashedPassword: string = await bcrypt.hash(password, salt);
 
-    res.status(201).json(user);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Internal server error' });
+    const user = new UserModel({
+      email,
+      password: hashedPassword,
+      name,
+    });
+
+    await user.save();
+
+    // Store the registered user in Redis
+    await redisclient.set(`user:${user._id}`, JSON.stringify(user));
+
+    res.send(`User ${user.name} created successfully`);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error creating user');
   }
 };
 
-export const loginUserController = async (req, res) => {
+export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    await redisMiddleware(req, res, async () => {
-      try {
-        const token = await loginUser(req.body as UserInput);
-    
-        res.status(200).json({ token });
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-      } });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Internal server error' });
+    const { email, password }: { email: string; password: string } = req.body;
+    if (!email || !password) {
+      res.status(400).send('Email and password are required');
+      return;
+    }
+
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      res.status(401).send('Invalid email or password');
+      return;
+    }
+
+    const validPassword: boolean = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      res.status(401).send('Invalid email or password');
+      return;
+    }
+
+    const token: string = jwt.sign({ _id: user._id }, 'mysecretkey');
+
+    // Store the login token in Redis
+    await redisclient.set(`token:${user._id}`, token);
+
+    res.header('Authorization', token).send(`Login successful. Welcome, ${user.name}`);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error logging in');
   }
 };
