@@ -1,6 +1,6 @@
 import {createClient} from 'redis'
 
-let client=createClient();//{url if redis is present in remote server}
+let client=createClient();
 export const redFun=()=>{
 
     

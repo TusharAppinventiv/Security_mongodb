@@ -22,9 +22,6 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(express.json())
 
 connectToDatabase();
-
-// app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
 app.use('/user', userRoutes);
 // app.use('/posts', authMiddleware, postsController.createPost);
 // app.use('/action', action)
