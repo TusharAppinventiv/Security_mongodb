@@ -65,5 +65,18 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     console.error(err);
     res.status(500).send('Error logging in');
   }
+}
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId }: { userId: string } = req.body;
+
+    // Update the status in Redis
+    await redisclient.set(`status:${userId}`, 'false');
+
+    res.send('Logout successful');
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).send('Error logging out');
+  }
 };
 
